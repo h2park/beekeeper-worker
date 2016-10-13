@@ -11,7 +11,7 @@ describe 'Worker', ->
       @redis.del 'work', done
 
   beforeEach (done) ->
-    @db = mongojs 'localhost', ['deployments', 'docker-builds', 'ci-builds']
+    @db = mongojs 'test-beekeeper-worker', ['deployments', 'docker-builds', 'ci-builds']
     @deployments = @db.deployments
     @deployments.remove done
 
@@ -59,7 +59,7 @@ describe 'Worker', ->
         @sut.do done
 
       it 'should create a docker build', (done) ->
-        @dockerBuilds.findOne owner_name: 'the-owner', repo_name: 'the-service', tag: 'v1.0.0', (error, result) =>
+        @dockerBuilds.findOne owner_name: 'the-owner', repo_name: 'the-service', tag: 'v1.0.0', { '_id': false }, (error, result) =>
           return done error if error?
           expectedDockerBuild =
             owner_name: 'the-owner'
@@ -71,7 +71,7 @@ describe 'Worker', ->
           done()
 
       it 'should update the deployment', (done) ->
-        @deployments.findOne owner_name: 'the-owner', repo_name: 'the-service', tag: 'v1.0.0', (error, metric) =>
+        @deployments.findOne owner_name: 'the-owner', repo_name: 'the-service', tag: 'v1.0.0', { '_id': false }, (error, metric) =>
           return done error if error?
           expectedDeployment =
             owner_name: 'the-owner'
@@ -109,7 +109,7 @@ describe 'Worker', ->
         @sut.do done
 
       it 'should create a ci build', (done) ->
-        @ciBuilds.findOne owner_name: 'the-owner', repo_name: 'the-service', tag: 'v1.0.0', (error, result) =>
+        @ciBuilds.findOne owner_name: 'the-owner', repo_name: 'the-service', tag: 'v1.0.0', { '_id': false }, (error, result) =>
           return done error if error?
           expectedCiBuild =
             owner_name: 'the-owner'
@@ -121,13 +121,67 @@ describe 'Worker', ->
           done()
 
       it 'should update the deployment', (done) ->
-        @deployments.findOne owner_name: 'the-owner', repo_name: 'the-service', tag: 'v1.0.0', (error, metric) =>
+        @deployments.findOne owner_name: 'the-owner', repo_name: 'the-service', tag: 'v1.0.0', { '_id': false }, (error, metric) =>
           return done error if error?
           expectedDeployment =
             owner_name: 'the-owner'
             repo_name: 'the-service'
             tag: 'v1.0.0'
             ci_passing: true
+
+          expect(metric).to.containSubset expectedDeployment
+          done()
+
+  describe '->do', ->
+    context 'deployment:create', ->
+      beforeEach (done) ->
+        record =
+          owner_name: 'the-owner'
+          repo_name: 'the-service'
+          tag: 'v1.0.0'
+        @deployments.insert record, done
+
+      beforeEach (done) ->
+        record =
+          owner_name: 'the-owner'
+          repo_name: 'the-service'
+          tag: 'v1.0.0'
+          ci_passing: true
+        @ciBuilds.insert record, done
+
+      beforeEach (done) ->
+        record =
+          owner_name: 'the-owner'
+          repo_name: 'the-service'
+          tag: 'v1.0.0'
+          docker_url: 'the-owner/the-service:v1.0.0'
+
+        @dockerBuilds.insert record, done
+
+      beforeEach (done) ->
+        data =
+          type: 'deployment:create'
+          body:
+            tag: 'v1.0.0'
+            owner_name: 'the-owner'
+            repo_name: 'the-service'
+
+        record = JSON.stringify data
+        @redis.lpush 'work', record, done
+        return # stupid promises
+
+      beforeEach (done) ->
+        @sut.do done
+
+      it 'should update the deployment', (done) ->
+        @deployments.findOne owner_name: 'the-owner', repo_name: 'the-service', tag: 'v1.0.0', { '_id': false }, (error, metric) =>
+          return done error if error?
+          expectedDeployment =
+            owner_name: 'the-owner'
+            repo_name: 'the-service'
+            tag: 'v1.0.0'
+            ci_passing: true
+            docker_url: 'the-owner/the-service:v1.0.0'
 
           expect(metric).to.containSubset expectedDeployment
           done()

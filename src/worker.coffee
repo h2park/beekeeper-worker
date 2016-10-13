@@ -1,6 +1,7 @@
-async              = require 'async'
-DockerHubHandler   = require './handlers/docker-hub-handler'
-TravisCIHandler   = require './handlers/travis-ci-handler'
+async                   = require 'async'
+DockerHubHandler        = require './handlers/docker-hub-handler'
+TravisCIHandler         = require './handlers/travis-ci-handler'
+DeploymentCreateHandler = require './handlers/deployment-create-handler'
 
 class Worker
   constructor: (options={})->
@@ -12,8 +13,9 @@ class Worker
     @isStopped = false
     @datastore = @db.deployments
     @handlers =
-      'docker:hub': new DockerHubHandler datastore: @db['docker-builds']
-      'travis:ci': new TravisCIHandler datastore: @db['ci-builds']
+      'docker:hub': new DockerHubHandler { @db }
+      'travis:ci': new TravisCIHandler { @db }
+      'deployment:create': new DeploymentCreateHandler { @db }
 
   do: (callback) =>
     @redis.brpop @queueName, @queueTimeout, (error, result) =>

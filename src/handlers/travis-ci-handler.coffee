@@ -1,5 +1,6 @@
 class TravisCIHandler
-  constructor: ({ @datastore }) ->
+  constructor: ({ @db }) ->
+    @datastore = @db['ci-builds']
 
   do: ({ body }, callback) =>
     { status, branch, repository } = body

@@ -1,5 +1,6 @@
 class DockerHubHandler
-  constructor: ({ @datastore }) ->
+  constructor: ({ @db }) ->
+    @datastore = @db['docker-builds']
 
   do: ({ body }, callback) =>
     { push_data, repository } = body
