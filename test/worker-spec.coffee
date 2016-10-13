@@ -81,3 +81,53 @@ describe 'Worker', ->
 
           expect(metric).to.containSubset expectedDeployment
           done()
+
+  describe '->do', ->
+    context 'travis:ci', ->
+      beforeEach (done) ->
+        record =
+          owner_name: 'the-owner'
+          repo_name: 'the-service'
+          tag: 'v1.0.0'
+        @deployments.insert record, done
+
+      beforeEach (done) ->
+        data =
+          type: 'travis:ci'
+          body:
+            status: 0
+            branch: 'v1.0.0'
+            repository:
+              name: 'the-service'
+              owner_name: 'the-owner'
+
+        record = JSON.stringify data
+        @redis.lpush 'work', record, done
+        return # stupid promises
+
+      beforeEach (done) ->
+        @sut.do done
+
+      it 'should create a ci build', (done) ->
+        @ciBuilds.findOne owner_name: 'the-owner', repo_name: 'the-service', tag: 'v1.0.0', (error, result) =>
+          return done error if error?
+          expectedCiBuild =
+            owner_name: 'the-owner'
+            repo_name: 'the-service'
+            tag: 'v1.0.0'
+            ci_passing: true
+
+          expect(result).to.containSubset expectedCiBuild
+          done()
+
+      it 'should update the deployment', (done) ->
+        @deployments.findOne owner_name: 'the-owner', repo_name: 'the-service', tag: 'v1.0.0', (error, metric) =>
+          return done error if error?
+          expectedDeployment =
+            owner_name: 'the-owner'
+            repo_name: 'the-service'
+            tag: 'v1.0.0'
+            ci_passing: true
+
+          expect(metric).to.containSubset expectedDeployment
+          done()
