@@ -88,7 +88,7 @@ class Command
     return options
 
   run: =>
-    db = mongojs @mongodb_uri, ['metrics']
+    db = mongojs @mongodb_uri, ['deployments', 'ci-builds', 'docker-builds']
     client = new Redis @redis_uri, dropBufferSupport: true
     redis = new RedisNS @redis_namespace, client
 
