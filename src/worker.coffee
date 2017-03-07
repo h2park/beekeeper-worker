@@ -2,6 +2,7 @@ async                   = require 'async'
 DockerHubHandler        = require './handlers/docker-hub-handler'
 TravisCIHandler         = require './handlers/travis-ci-handler'
 DeploymentCreateHandler = require './handlers/deployment-create-handler'
+CodefreshHandler        = require './handlers/codefresh-handler'
 
 class Worker
   constructor: (options={})->
@@ -16,6 +17,7 @@ class Worker
       'docker:hub': new DockerHubHandler { @db }
       'travis:ci': new TravisCIHandler { @db }
       'deployment:create': new DeploymentCreateHandler { @db }
+      'codefresh': new CodefreshHandler { @db }
 
   do: (callback) =>
     @redis.brpop @queueName, @queueTimeout, (error, result) =>
@@ -58,6 +60,7 @@ class Worker
       type
       owner_name
       repo_name
+      tag
       body
     } = data
 
@@ -66,7 +69,7 @@ class Worker
       console.error "No Handler Available: #{type}"
       return callback()
 
-    handler.do { owner_name, repo_name, body }, (error, deployment) =>
+    handler.do { owner_name, repo_name, body, tag }, (error, deployment) =>
       return callback error if error?
       { owner_name, repo_name, tag } = deployment
       dasherized_type = type.replace '.', '-'

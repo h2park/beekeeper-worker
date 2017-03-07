@@ -1,7 +1,9 @@
-Worker  = require '../src/worker'
-Redis   = require 'ioredis'
-RedisNS = require '@octoblu/redis-ns'
-mongojs = require 'mongojs'
+{describe,context,beforeEach,afterEach,it} = global
+{expect} = require 'chai'
+Worker   = require '../src/worker'
+Redis    = require 'ioredis'
+RedisNS  = require '@octoblu/redis-ns'
+mongojs  = require 'mongojs'
 
 describe 'Worker', ->
   beforeEach (done) ->
@@ -185,3 +187,87 @@ describe 'Worker', ->
 
           expect(metric).to.containSubset expectedDeployment
           done()
+
+  describe '->do', ->
+    context 'codefresh', ->
+      beforeEach (done) ->
+        record =
+          owner_name: 'the-owner'
+          repo_name: 'the-service'
+          tag: 'v1.0.0'
+        @deployments.insert record, done
+
+      beforeEach (done) ->
+        record =
+          owner_name: 'the-owner'
+          repo_name: 'the-service'
+          tag: 'v1.0.0'
+          ci_passing: false
+        @ciBuilds.insert record, done
+
+      beforeEach (done) ->
+        record =
+          owner_name: 'the-owner'
+          repo_name: 'the-service'
+          tag: 'v1.0.0'
+
+        @dockerBuilds.insert record, done
+
+      describe 'when ci is passing', ->
+        beforeEach (done) ->
+          data =
+            type: 'codefresh'
+            tag: 'v1.0.0'
+            owner_name: 'the-owner'
+            repo_name: 'the-service'
+            body:
+              ci_passing: true
+
+          record = JSON.stringify data
+          @redis.lpush 'work', record, done
+          return # stupid promises
+
+        beforeEach (done) ->
+          @sut.do done
+
+        it 'should update the deployment', (done) ->
+          @deployments.findOne owner_name: 'the-owner', repo_name: 'the-service', tag: 'v1.0.0', { '_id': false }, (error, metric) =>
+            return done error if error?
+            expectedDeployment =
+              owner_name: 'the-owner'
+              repo_name: 'the-service'
+              tag: 'v1.0.0'
+              ci_passing: true
+              docker_url: 'the-owner/the-service:v1.0.0'
+
+            expect(metric).to.containSubset expectedDeployment
+            done()
+
+      describe 'when ci is not passing', ->
+        beforeEach (done) ->
+          data =
+            type: 'codefresh'
+            tag: 'v1.0.0'
+            owner_name: 'the-owner'
+            repo_name: 'the-service'
+            body:
+              ci_passing: false
+
+          record = JSON.stringify data
+          @redis.lpush 'work', record, done
+          return # stupid promises
+
+        beforeEach (done) ->
+          @sut.do done
+
+        it 'should update the deployment', (done) ->
+          @deployments.findOne owner_name: 'the-owner', repo_name: 'the-service', tag: 'v1.0.0', { '_id': false }, (error, metric) =>
+            return done error if error?
+            expectedDeployment =
+              owner_name: 'the-owner'
+              repo_name: 'the-service'
+              tag: 'v1.0.0'
+              docker_url: 'the-owner/the-service:v1.0.0'
+
+            expect(metric).to.containSubset expectedDeployment
+            done()
