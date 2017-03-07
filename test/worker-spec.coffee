@@ -217,10 +217,10 @@ describe 'Worker', ->
         beforeEach (done) ->
           data =
             type: 'codefresh'
-            tag: 'v1.0.0'
             owner_name: 'the-owner'
             repo_name: 'the-service'
             body:
+              tag: 'v1.0.0'
               ci_passing: true
 
           record = JSON.stringify data
@@ -247,10 +247,10 @@ describe 'Worker', ->
         beforeEach (done) ->
           data =
             type: 'codefresh'
-            tag: 'v1.0.0'
             owner_name: 'the-owner'
             repo_name: 'the-service'
             body:
+              tag: 'v1.0.0'
               ci_passing: false
 
           record = JSON.stringify data

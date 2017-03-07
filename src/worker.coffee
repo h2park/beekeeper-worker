@@ -60,7 +60,6 @@ class Worker
       type
       owner_name
       repo_name
-      tag
       body
     } = data
 
@@ -69,8 +68,9 @@ class Worker
       console.error "No Handler Available: #{type}"
       return callback()
 
-    handler.do { owner_name, repo_name, body, tag }, (error, deployment) =>
+    handler.do { owner_name, repo_name, body }, (error, deployment) =>
       return callback error if error?
+      return callback null unless deployment?
       { owner_name, repo_name, tag } = deployment
       dasherized_type = type.replace '.', '-'
       deployment["updated_at.#{dasherized_type}"] = new Date

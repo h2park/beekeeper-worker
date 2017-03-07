@@ -5,14 +5,16 @@ class CodefreshHandler
     @ciBuilds = @db['ci-builds']
     @dockerBuilds = @db['docker-builds']
 
-  do: ({ owner_name, repo_name, tag, body }, callback) =>
+  do: ({ owner_name, repo_name, body }, callback) =>
+    tag =_.get body, 'tag'
+    return callback null unless tag?
     @_updateCiBuild { owner_name, repo_name, tag, body }, (error, ciRecord={}) =>
       return callback error if error?
       @_updateDockerBuild { owner_name, repo_name, tag }, (error, dockerRecord={}) =>
         return callback error if error?
-        callback null, _.merge { owner_name, repo_name, tag }, ciRecord, dockerRecord
+        callback null, _.merge { owner_name, repo_name }, ciRecord, dockerRecord
 
-  _updateCiBuild: ({ owner_name, repo_name, tag, body }, callback) =>
+  _updateCiBuild: ({ owner_name, repo_name, body, tag }, callback) =>
     ci_passing =_.get body, 'ci_passing', false
     return callback null unless ci_passing
     build = {
